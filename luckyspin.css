@@ -1,0 +1,170 @@
+body {
+      background: #111;
+      font-family: Arial, sans-serif;
+      color: white;
+      text-align: center;
+      padding-top: 40px;
+    }
+    .draw-box {
+      background: #222;
+      border-radius: 20px;
+      padding: 30px;
+      display: block;
+      margin: 30px auto 0 auto;
+      box-shadow: 0 0 15px #FFD700;
+      max-width: 500px;
+      width: 95vw;
+      box-sizing: border-box;
+    }
+    .prizes {
+      margin: 20px 0;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+    }
+    .prize {
+      background: #333;
+      padding: 15px;
+      border-radius: 10px;
+      font-size: 18px;
+      border: 2px solid transparent;
+      transition: 0.2s;
+    }
+    .prize.highlight {
+      border: 2px solid #00FF66;
+      background: #004400;
+      transform: scale(1.05);
+    }
+    button {
+      margin-top: 10px;
+      padding: 12px 25px;
+      font-size: 18px;
+      background: #FFD700;
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .lang-btn {
+      width: 48%;
+      height: 40px;
+      margin: 1%;
+      padding: 0;
+      font-size: 16px;
+      background: #FFD700;
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      vertical-align: middle;
+      box-sizing: border-box;
+      min-width: 120px;
+      max-width: 180px;
+    }
+    #result {
+      margin-top: 20px;
+      font-size: 22px;
+      color: #00FF66;
+    }
+    #history {
+      margin-top: 30px;
+      font-size: 16px;
+      color: #aaa;
+      text-align: left;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .username-box {
+      margin-bottom: 15px;
+    }
+    .winner-board {
+      margin-top: 60px;
+      padding: 20px;
+      background: #1e1e1e;
+      border-radius: 10px;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .winner-board h3 {
+      color: #FFD700;
+    }
+    #realUsersModal > div {
+      background: #222;
+      padding: 40px 30px;
+      border-radius: 16px;
+      max-width: 600px;
+      min-width: 320px;
+      width: 96vw;
+      margin: auto;
+      position: relative;
+      box-sizing: border-box;
+    }
+
+    /* Responsive styles for mobile */
+    @media (max-width: 600px) {
+      body {
+        padding-top: 10px;
+        font-size: 15px;
+      }
+      .draw-box,
+      .winner-board {
+        padding: 10px;
+        border-radius: 10px;
+        max-width: 99vw;
+        width: 99vw;
+        margin: 10px auto 0 auto;
+      }
+      .prizes {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+      }
+      .prize {
+        font-size: 15px;
+        padding: 10px;
+      }
+      button,
+      .lang-btn,
+      #viewRealUsersBtn {
+        font-size: 16px !important;
+        padding: 10px 0 !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box;
+      }
+      .lang-btn {
+        width: 49% !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        margin: 0.5% 0.5%;
+      }
+      input[type="text"], input[type="password"] {
+        font-size: 15px;
+        width: 95% !important;
+        max-width: 95vw !important;
+      }
+      #realUsersModal > div {
+        max-width: 99vw !important;
+        min-width: 0 !important;
+        padding: 18px 5px !important;
+        border-radius: 10px !important;
+      }
+      table {
+        font-size: 14px !important;
+        padding: -20rem;
+      }
+      th, td {
+        padding: 4px 2px !important;
+      }
+      #history {
+        font-size: 14px;
+        max-width: 98vw;
+      }
+    }
+
+    /* Make modal content scrollable on small screens */
+    #realUsersModal > div {
+      max-height: 90vh;
+      overflow-y: auto;
+    }
