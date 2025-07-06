@@ -162,7 +162,7 @@ function spin() {
       localStorage.setItem("spin_records", JSON.stringify(records));
 
       // --- Save to MongoDB backend ---
-      fetch('http://luckyspin7.netlify.app/api/spin', {
+      fetch('https://luckyspin-backend.onrender.com/api/spin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, prize: wonPrize })
@@ -199,7 +199,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     // Check with backend if user has spun
-    fetch('http://luckyspin7.netlify.app/api/spins')
+    fetch('https://luckyspin-backend.onrender.com/api/spins')
       .then(res => res.json())
       .then(spins => {
         const found = spins.some(s => (s.username || '').toLowerCase() === username.toLowerCase());
@@ -410,7 +410,7 @@ function showRealUsers() {
   ul.innerHTML = "";
 
   // Fetch from backend
-  fetch('http://luckyspin7.netlify.app/api/spins')
+  fetch('https://luckyspin-backend.onrender.com/api/spins')
     .then(res => res.json())
     .then(records => {
       if (!records.length) {
@@ -538,7 +538,7 @@ function createResetModal() {
           document.getElementById('deleteUserResult').innerHTML = '<span style="color:#FF4444;">Please enter a username.</span>';
           return;
         }
-        fetch('http://luckyspin7.netlify.app/api/spins/user/' + encodeURIComponent(userToDelete), { method: 'DELETE' })
+        fetch('https://luckyspin-backend.onrender.com/api/spins/user/' + encodeURIComponent(userToDelete), { method: 'DELETE' })
           .then(res => {
             if (!res.ok) {
               return res.json().then(data => { throw new Error(data.error || 'Server error'); });
