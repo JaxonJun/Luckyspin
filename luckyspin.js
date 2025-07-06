@@ -26,7 +26,7 @@ const translations = {
 };
 
 let currentLang = "en";
-const prizeProbabilities = Array(translations[currentLang].prizes.length).fill(1);
+const prizeProbabilities = [5, 10, 10, 85, 95, 90]; // 从高到低
 
 function setLanguage(lang) {
   currentLang = lang;
