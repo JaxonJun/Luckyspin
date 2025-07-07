@@ -229,31 +229,31 @@ document.addEventListener("DOMContentLoaded", () => {
 // Add this after your other JS code
 
 const winnerNames = [
-  {en: "Aung Khat", mm: "အောင်ခတ်"},
-  {en: "TinTin", mm: "တင်တင်"},
-  {en: "WinChit", mm: "ဝင်းချစ်"},
-  {en: "Sai Shan", mm: "စိုင်းရှမ်း"},
-  {en: "Cherry", mm: "ချယ်ရီ"},
-  {en: "Zaw Win", mm: "ဇော်ဝင်း"},
-  {en: "May Thu", mm: "မေသူ"},
-  {en: "Ko Ko", mm: "ကိုကို"},
-  {en: "Hnin Ei", mm: "နှင်းအိ"},
-  {en: "Min Min", mm: "မင်းမင်း"},
-  {en: "Soe Moe", mm: "စိုးမိုး"},
-  {en: "Mya Mya", mm: "မြမြ"},
-  {en: "Htet Htet", mm: "ထက်ထက်"},
-  {en: "Su Su", mm: "စုစု"},
-  {en: "Aye Chan", mm: "အေးချမ်း"},
-  {en: "Nyein Ei", mm: "ငြိမ်းအိ"},
-  {en: "Thura", mm: "သူရ"},
-  {en: "Khin Khin", mm: "ခင်ခင်"},
-  {en: "Moe Moe", mm: "မိုးမိုး"},
-  {en: "Sanda", mm: "စန္ဒာ"}
+  {en: "Aung Khat", mm: "shang5****"},
+  {en: "shang2****", mm: "shang2****"},
+  {en: "shang8**** ", mm: "shang8****"},
+  {en: "shang2****", mm: "shang2****"},
+  {en: "shang6****", mm: "shang6****"},
+  {en: "TTH3****", mm: "TTH9****"},
+  {en: "TTH5****", mm: "TTH5****"},
+  {en: "TTH4****", mm: "TTH4****"},
+  {en: "TTH7****", mm: "TTH7****"},
+  {en: "MSG12***", mm: "MSG12***"},
+  {en: "MSG35***", mm: "MSG35***"},
+  {en: "MSG85***", mm: "MSG85***"},
+  {en: "MSG63***", mm: "MSG63***"},
+  {en: "MSG75***", mm: "MSG75***"},
+  {en: "waim1***", mm: "waim1***"},
+  {en: "jjoe6***", mm: "jjoe6***"},
+  {en: "Kxhain***", mm: "Kxhain***"},
+  {en: "mathu****", mm: "mathu****"},
+  {en: "bbx****", mm: "bbx****"},
+  {en: "bet01***", mm: "bet01***"}
   
 ];
 
 const winnerPrizes = [
-  "100 MMK", "200 MMK", "500 MMK", "1000 MMK", "5000 MMK", "Deposit 200% Free"
+  "500 MMK", "1,000 MMK", "2,000 MMK", "3,000 MMK", "5,000 MMK", "10,000 MMK"
 ];
 
 // Deterministic shuffle based on date
