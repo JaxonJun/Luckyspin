@@ -81,6 +81,7 @@ function easeOutQuad(t, b, c, d) {
   return -c * t*(t-2) + b;
 }
 
+// --- Strict One-Spin-Per-User Rule ---
 function spin() {
   const username = document.getElementById('username').value.trim();
   const btn = document.getElementById('spinBtn');
@@ -94,94 +95,102 @@ function spin() {
     return;
   }
 
-  const localKey = "spun_" + username;
-
-  if (localStorage.getItem(localKey) === "true") {
-    alert(t.alreadySpunAlert);
-    return;
-  }
-
   btn.disabled = true;
   resultDiv.innerText = '';
   history.innerHTML = `<strong id="historyTitle">${t.yourResult}</strong><br>`;
   const rollSound = document.getElementById('rollSound');
   const winSound = document.getElementById('winSound');
 
-  const finalIndex = weightedRandomIndex(prizeProbabilities);
-  const cycles = 4;
-  const totalSteps = cycles * translations[currentLang].prizes.length + finalIndex;
-  let current = 0;
-
-  rollSound.currentTime = 0;
-  rollSound.play();
-
-  function animateSpin() {
-    prizeElements.forEach(p => p.classList.remove('highlight'));
-    prizeElements[current % translations[currentLang].prizes.length].classList.add('highlight');
-    current++;
-    if (current <= totalSteps) {
-      const delay = easeOutQuad(current, 30, 300, totalSteps);
-      setTimeout(animateSpin, delay);
-    } else {
-      rollSound.pause();
-      winSound.play();
-      prizeElements.forEach(p => p.classList.remove('highlight'));
-      prizeElements[finalIndex].classList.add('highlight');
-      const wonPrize = translations[currentLang].prizes[finalIndex];
-      // --- Confetti and special message for last 3 prizes ---
-      const specialIdx = translations[currentLang].prizes.length - 3;
-      let confettiTitle = '';
-      let confettiMsg = '';
-      let confettiStyle = 0;
-      if (finalIndex >= specialIdx) {
-        if (finalIndex === specialIdx) {
-          confettiTitle = 'Big Win!';
-          confettiMsg = 'Congratulations! You just hit one of the top prizes!';
-          confettiStyle = 0;
-        } else if (finalIndex === specialIdx + 1) {
-          confettiTitle = 'Jackpot Winner!';
-          confettiMsg = 'Amazing! You have won the second highest reward!';
-          confettiStyle = 1;
-        } else if (finalIndex === specialIdx + 2) {
-          confettiTitle = 'Unbelievable Luck!';
-          confettiMsg = 'You got the ultimate prize! Fortune truly favors you!';
-          confettiStyle = 2;
-        }
-        // Show confetti and styled message
-        launchConfetti(confettiStyle);
-        resultDiv.innerHTML = `<div style="font-size:2rem;font-weight:bold;color:#FFD700;text-shadow:2px 2px 8px #000;margin-bottom:8px;">${confettiTitle}</div><div style="font-size:1.2rem;color:#00FF66;margin-bottom:8px;">${confettiMsg}</div>` + resultDiv.innerHTML;
+  // --- Check backend before spinning ---
+  fetch('https://luckyspin-backend.onrender.com/api/spins')
+    .then(res => res.json())
+    .then(spins => {
+      const found = spins.some(s => (s.username || '').toLowerCase() === username.toLowerCase());
+      if (found) {
+        // User already spun, show message and block spin
+        btn.disabled = true;
+        resultDiv.innerText = t.alreadySpun;
+        alert(t.alreadySpunAlert);
+        return;
       }
-      const text = t.won.replace("{username}", username).replace("{prize}", wonPrize);
-      resultDiv.innerText = text;
-      history.innerHTML += `• ${text}<br>`;
-      localStorage.setItem(localKey, "true");
+      // Not found, allow spin
+      // --- Spin Animation Logic ---
+      const finalIndex = weightedRandomIndex(prizeProbabilities);
+      const cycles = 4;
+      const totalSteps = cycles * translations[currentLang].prizes.length + finalIndex;
+      let current = 0;
+      rollSound.currentTime = 0;
+      rollSound.play();
+      function animateSpin() {
+        prizeElements.forEach(p => p.classList.remove('highlight'));
+        prizeElements[current % translations[currentLang].prizes.length].classList.add('highlight');
+        current++;
+        if (current <= totalSteps) {
+          const delay = easeOutQuad(current, 30, 300, totalSteps);
+          setTimeout(animateSpin, delay);
+        } else {
+          rollSound.pause();
+          winSound.play();
+          prizeElements.forEach(p => p.classList.remove('highlight'));
+          prizeElements[finalIndex].classList.add('highlight');
+          const wonPrize = translations[currentLang].prizes[finalIndex];
+          // --- Confetti and special message for last 3 prizes ---
+          const specialIdx = translations[currentLang].prizes.length - 3;
+          let confettiTitle = '';
+          let confettiMsg = '';
+          let confettiStyle = 0;
+          if (finalIndex >= specialIdx) {
+            if (finalIndex === specialIdx) {
+              confettiTitle = 'Big Win!';
+              confettiMsg = 'Congratulations! You just hit one of the top prizes!';
+              confettiStyle = 0;
+            } else if (finalIndex === specialIdx + 1) {
+              confettiTitle = 'Jackpot Winner!';
+              confettiMsg = 'Amazing! You have won the second highest reward!';
+              confettiStyle = 1;
+            } else if (finalIndex === specialIdx + 2) {
+              confettiTitle = 'Unbelievable Luck!';
+              confettiMsg = 'You got the ultimate prize! Fortune truly favors you!';
+              confettiStyle = 2;
+            }
+            launchConfetti(confettiStyle);
+            resultDiv.innerHTML = `<div style="font-size:2rem;font-weight:bold;color:#FFD700;text-shadow:2px 2px 8px #000;margin-bottom:8px;">${confettiTitle}</div><div style="font-size:1.2rem;color:#00FF66;margin-bottom:8px;">${confettiMsg}</div>` + resultDiv.innerHTML;
+          }
+          const text = t.won.replace("{username}", username).replace("{prize}", wonPrize);
+          resultDiv.innerText = text;
+          history.innerHTML += `• ${text}<br>`;
 
-      const today = new Date().toISOString().slice(0,10); // YYYY-MM-DD
-      let records = JSON.parse(localStorage.getItem("spin_records") || "[]");
-      records.push({ username, date: today, prize: wonPrize }); // <-- Save prize
-      localStorage.setItem("spin_records", JSON.stringify(records));
-
-      // --- Save to MongoDB backend ---
-      fetch('https://luckyspin-backend.onrender.com/api/spin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, prize: wonPrize })
-      })
-      .then(res => res.json())
-      .then(data => {
-        // Optionally handle response
-        // console.log('Saved to DB:', data);
-      })
-      .catch(err => {
-        // Optionally handle error
-        // console.error('DB error:', err);
-      });
-
-      btn.disabled = true;
-    }
-  }
-
-  animateSpin();
+          // --- Save to backend, then update localStorage ---
+          fetch('https://luckyspin-backend.onrender.com/api/spin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, prize: wonPrize })
+          })
+          .then(res => res.json())
+          .then(data => {
+            // Only after backend confirms, set localStorage
+            localStorage.setItem("spun_" + username, "true");
+            // Save to local spin_records for history (optional)
+            const today = new Date().toISOString().slice(0,10);
+            let records = JSON.parse(localStorage.getItem("spin_records") || "[]");
+            records.push({ username, date: today, prize: wonPrize });
+            localStorage.setItem("spin_records", JSON.stringify(records));
+            btn.disabled = true;
+          })
+          .catch(err => {
+            // Backend error, inform user
+            resultDiv.innerText = 'Error saving your spin. Please try again.';
+            btn.disabled = false;
+          });
+        }
+      }
+      animateSpin();
+    })
+    .catch(() => {
+      // Backend error, fallback: block spin for safety
+      resultDiv.innerText = 'Cannot verify spin status. Please try again later.';
+      btn.disabled = false;
+    });
 }
 
 // 自动检查用户名是否已抽奖（输入框变化时）
@@ -191,37 +200,29 @@ document.addEventListener("DOMContentLoaded", () => {
   const usernameInput = document.getElementById('username');
   usernameInput.addEventListener("input", () => {
     const username = usernameInput.value.trim();
-    const key = "spun_" + username;
     const t = translations[currentLang];
     if (!username) {
       btn.disabled = false;
       document.getElementById("result").innerText = "";
       return;
     }
-    // Check with backend if user has spun
+    // Always check backend for spin status
     fetch('https://luckyspin-backend.onrender.com/api/spins')
       .then(res => res.json())
       .then(spins => {
         const found = spins.some(s => (s.username || '').toLowerCase() === username.toLowerCase());
         if (found) {
-          localStorage.setItem(key, "true");
           btn.disabled = true;
           document.getElementById("result").innerText = t.alreadySpun;
         } else {
-          localStorage.removeItem(key);
           btn.disabled = false;
           document.getElementById("result").innerText = "";
         }
       })
       .catch(() => {
-        // fallback to localStorage if backend fails
-        if (localStorage.getItem(key) === "true") {
-          btn.disabled = true;
-          document.getElementById("result").innerText = t.alreadySpun;
-        } else {
-          btn.disabled = false;
-          document.getElementById("result").innerText = "";
-        }
+        // If backend fails, block spin for safety
+        btn.disabled = true;
+        document.getElementById("result").innerText = 'Cannot verify spin status.';
       });
   });
 });
@@ -386,6 +387,32 @@ document.getElementById("viewRealUsersBtn").onclick = function() {
   document.getElementById("realUsersList").style.display = "none";
   document.getElementById("realUsersKeyInput").value = "";
   document.getElementById("realUsersKeyError").innerText = "";
+  // Make the modal box larger
+  const modalBox = document.querySelector('#realUsersModal > div');
+  if (modalBox) {
+    modalBox.style.maxWidth = '700px';
+    modalBox.style.width = '90vw';
+    modalBox.style.minWidth = '400px';
+    modalBox.style.padding = '40px 30px';
+    // Adjust close button to be plain '×' with no background
+    const closeBtn = document.getElementById('closeRealUsersModal');
+    if (closeBtn) {
+      closeBtn.style.background = 'none';
+      closeBtn.style.border = 'none';
+      closeBtn.style.borderRadius = '0';
+      closeBtn.style.width = '44px';
+      closeBtn.style.height = '44px';
+      closeBtn.style.fontSize = '28px';
+      closeBtn.style.lineHeight = '44px';
+      closeBtn.style.textAlign = 'center';
+      closeBtn.style.cursor = 'pointer';
+      closeBtn.style.position = 'absolute';
+      closeBtn.style.left = '50%';
+      closeBtn.style.top = '-22px';
+      closeBtn.style.transform = 'translateX(-50%)';
+      closeBtn.style.zIndex = '10';
+    }
+  }
 };
 
 document.getElementById("closeRealUsersModal").onclick = function() {
@@ -405,7 +432,7 @@ document.getElementById("realUsersKeyBtn").onclick = function() {
 };
 
 // --- Fetch and render real user spins from MongoDB ---
-function showRealUsers() {
+function showRealUsers(dateFilter = null) {
   const ul = document.getElementById("realUsersUl");
   ul.innerHTML = "";
 
@@ -417,20 +444,30 @@ function showRealUsers() {
         ul.innerHTML = "<li style='color:#fff;'>No user has spun yet.</li>";
         return;
       }
+      // Filter by date if needed
+      let filtered = records;
+      if (dateFilter) {
+        filtered = records.filter(r => {
+          const d = new Date(r.date);
+          const y = d.getFullYear();
+          const m = String(d.getMonth()+1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          const dateStr = `${y}-${m}-${day}`;
+          return dateStr === dateFilter;
+        });
+      }
       // Sort by date descending
-      records.sort((a, b) => new Date(b.date) - new Date(a.date));
+      filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
       // Calculate totals
-      const uniqueUsers = new Set(records.map(r => (r.username || '').toLowerCase()));
+      const uniqueUsers = new Set(filtered.map(r => (r.username || '').toLowerCase()));
       let totalPrize = 0;
       function myanmarToEnglish(str) {
-        // Convert Myanmar numerals to English
         const myanmarDigits = '၀၁၂၃၄၅၆၇၈၉';
         return str.replace(/[၀-၉]/g, d => myanmarDigits.indexOf(d));
       }
-      records.forEach(r => {
+      filtered.forEach(r => {
         let prizeStr = (r.prize || '').replace(/,/g, '');
         prizeStr = myanmarToEnglish(prizeStr);
-        // Only sum if prize is MMK (contains MMK or ကျပ်)
         if (/\d+/.test(prizeStr) && (prizeStr.includes('MMK') || prizeStr.includes('ကျပ်'))) {
           let match = prizeStr.match(/(\d+)/);
           if (match) totalPrize += parseInt(match[1], 10);
@@ -439,26 +476,27 @@ function showRealUsers() {
       // Create a table for better formatting
       let html = `<div style='text-align:center;margin-bottom:12px;'><span style='font-size:22px;font-weight:bold;color:#fff;'>🎯 Spin Records</span></div>`;
       html += `<div style='color:#FFD700;font-size:17px;margin-bottom:10px;'>Total Users: <b>${uniqueUsers.size}</b> &nbsp; | &nbsp; Total Prize: <b>${totalPrize.toLocaleString()} MMK</b></div>`;
-      html += `<table style="width:100%;color:#fff;font-size:16px;border-collapse:separate;border-spacing:0 8px;table-layout:fixed;">
-        <thead>
-          <tr style='border-bottom:2px solid #FFD700;'>
-            <th style='padding:8px 10px;width:32%;text-align:left;'>Date</th>
-            <th style='padding:8px 10px;width:34%;text-align:left;'>Username</th>
-            <th style='padding:8px 10px;width:34%;text-align:left;'>Prize</th>
-          </tr>
-        </thead>
-        <tbody>`;
-      records.forEach(r => {
-        // Format date as YYYY-MM-DD only
+      // The date search box is added by addDateSearchToModal(), so do not add it here
+      html += `<div style="max-height:52vh;min-height:180px;overflow-y:auto;margin:0 auto;width:100%;background:#181818;border-radius:12px;box-shadow:0 2px 12px #0002;">
+        <table style="width:100%;color:#fff;font-size:15px;border-collapse:separate;border-spacing:0 6px;table-layout:fixed;">
+          <thead>
+            <tr style='border-bottom:2px solid #FFD700;'>
+              <th style='padding:8px 4px;width:32%;text-align:left;'>Date</th>
+              <th style='padding:8px 4px;width:34%;text-align:left;'>Username</th>
+              <th style='padding:8px 4px;width:34%;text-align:left;'>Prize</th>
+            </tr>
+          </thead>
+          <tbody>`;
+      filtered.forEach(r => {
         const dateObj = new Date(r.date);
         const date = dateObj.getFullYear() + '-' + String(dateObj.getMonth()+1).padStart(2, '0') + '-' + String(dateObj.getDate()).padStart(2, '0');
         html += `<tr style='background:#222;border-radius:8px;'>
-          <td style='padding:8px 10px;border-radius:8px 0 0 8px;'>${date}</td>
-          <td style='padding:8px 10px;'>${r.username}</td>
-          <td style='padding:8px 10px;border-radius:0 8px 8px 0;color:#FFD700;font-weight:bold;'>${r.prize}</td>
+          <td style='padding:7px 4px;border-radius:8px 0 0 8px;word-break:break-all;'>${date}</td>
+          <td style='padding:7px 4px;word-break:break-all;'>${r.username}</td>
+          <td style='padding:7px 4px;border-radius:0 8px 8px 0;color:#FFD700;font-weight:bold;'>${r.prize}</td>
         </tr>`;
       });
-      html += '</tbody></table>';
+      html += '</tbody></table></div>';
       ul.innerHTML = html;
     })
     .catch(() => {
@@ -466,10 +504,36 @@ function showRealUsers() {
     });
 }
 
-// Optional: Close modal when clicking outside the popup
-document.getElementById("realUsersModal").addEventListener("click", function(e) {
-  if (e.target === this) this.style.display = "none";
-});
+// Add date search input to modal
+function addDateSearchToModal() {
+  const modalBox = document.querySelector('#realUsersModal > div');
+  if (!modalBox) return;
+  if (document.getElementById('realUsersDateSearch')) return;
+  const searchDiv = document.createElement('div');
+  searchDiv.style = 'text-align:center;margin-bottom:16px;';
+  searchDiv.innerHTML = `
+    <input id="realUsersDateSearch" type="date" style="padding:6px 10px;border-radius:5px;font-size:16px;max-width:180px;">
+    <button id="realUsersDateBtn" style="margin-left:8px;background:#FFD700;color:#111;font-weight:bold;padding:6px 16px;border-radius:6px;">Search</button>
+    <button id="realUsersDateClear" style="margin-left:8px;background:#444;color:#fff;font-weight:bold;padding:6px 16px;border-radius:6px;">All</button>
+  `;
+  modalBox.insertBefore(searchDiv, modalBox.children[1]);
+  document.getElementById('realUsersDateBtn').onclick = function() {
+    const val = document.getElementById('realUsersDateSearch').value;
+    if (val) showRealUsers(val);
+  };
+  document.getElementById('realUsersDateClear').onclick = function() {
+    document.getElementById('realUsersDateSearch').value = '';
+    showRealUsers();
+  };
+}
+
+// Update modal open handler to add date search
+const origViewRealUsersBtn = document.getElementById("viewRealUsersBtn").onclick;
+document.getElementById("viewRealUsersBtn").onclick = function() {
+  if (origViewRealUsersBtn) origViewRealUsersBtn();
+  addDateSearchToModal();
+  showRealUsers();
+};
 
 // --- Reset Database Modal Logic ---
 function createResetModal() {
@@ -478,8 +542,8 @@ function createResetModal() {
   modal.id = 'resetDbModal';
   modal.style = 'display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.7);z-index:10000;align-items:center;justify-content:center;';
   modal.innerHTML = `
-    <div style="background:#222;padding:30px 20px;border-radius:12px;max-width:350px;margin:auto;position:relative;min-width:280px;">
-      <button id="closeResetDbModal" style="position:absolute;top:10px;right:10px;background:#FFD700;border:none;border-radius:50%;width:30px;height:30px;font-size:18px;cursor:pointer;">×</button>
+    <div style="background:#222;padding:30px 20px 20px 20px;border-radius:12px;max-width:350px;margin:auto;position:relative;min-width:280px;">
+      <button id="closeResetDbModal" style="position:absolute;left:50%;top:-22px;transform:translateX(-50%);background:none;border:none;border-radius:0;width:44px;height:44px;font-size:28px;line-height:44px;text-align:center;cursor:pointer;z-index:10;">×</button>
       <div id="resetDbAuth">
         <h3 style="color:#FFD700;text-align:center;">Admin Login</h3>
         <input type="text" id="resetDbUsername" placeholder="Username" style="padding:6px 10px;border-radius:5px;width:90%;margin-bottom:8px;">
