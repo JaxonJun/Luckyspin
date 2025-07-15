@@ -26,7 +26,7 @@ const translations = {
 };
 
 let currentLang = "en";
-const prizeProbabilities = [95, 80, 2, 1, 0.1, 0.01]; // 从高到低
+const prizeProbabilities = [30, 20, 40, 30, 1, 0.1]; // 从高到低
 
 function setLanguage(lang) {
   currentLang = lang;
