@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EZ-BET Admin Panel</title>
+    <link rel="stylesheet" href="admin.css">
+</head>
+
+<body>
+    <div class="admin-container">
+        <div class="admin-header">
+            <!-- Subtle back link -->
+            <div>
+                <a href="/" class="back-link">← Back to Main</a>
+            </div>
+
+            <h1 class="admin-title">EZ-BET Admin Panel</h1>
+            <p class="admin-subtitle">Manage your lucky draw system</p>
+        </div>
+
+        <!-- Login Section -->
+        <div id="loginSection" class="login-section">
+            <h2 class="login-title">🔐 Admin Login</h2>
+            <div class="input-group">
+                <label for="adminUsername">Username:</label>
+                <input type="text" id="adminUsername" placeholder="Enter admin username">
+            </div>
+            <div class="input-group">
+                <label for="adminPassword">Password:</label>
+                <input type="password" id="adminPassword" placeholder="Enter admin password">
+            </div>
+            <button class="btn btn-primary" onclick="adminLogin()">Login</button>
+            <div id="loginMessage"></div>
+        </div>
+
+        <!-- Admin Panel -->
+        <div id="adminPanel" class="admin-section">
+            <!-- Statistics Section -->
+            <div class="section-card">
+                <h2 class="section-title">📊 System Statistics</h2>
+
+                <!-- Date Filter -->
+                <div class="date-filter-section">
+                    <h3 class="date-filter-title">📅 Date Filter</h3>
+                    <div class="date-filter-controls">
+                        <div class="input-group date-filter-input">
+                            <label for="statsDateFilter">Select Date:</label>
+                            <input type="date" id="statsDateFilter">
+                        </div>
+                        <div class="date-filter-buttons">
+                            <button class="btn btn-success" onclick="filterByDate()">🔍 Filter</button>
+                            <button class="btn btn-warning" onclick="loadTodayStats()">📅 Today</button>
+                            <button class="btn btn-primary" onclick="loadAllTimeStats()">🔄 All Time</button>
+                        </div>
+                    </div>
+                    <div id="statsDateLabel" class="stats-date-label">Showing: All Time Data</div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalUsers">-</div>
+                        <div class="stat-label">Total Users</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalSpins">-</div>
+                        <div class="stat-label">Total Spins</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalPrizes">-</div>
+                        <div class="stat-label">Total Prizes (MMK)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="todaySpins">-</div>
+                        <div class="stat-label">Today's Spins</div>
+                    </div>
+                </div>
+
+
+                <button class="btn btn-primary" onclick="loadStats()">🔄 Refresh Stats</button>
+            </div>
+
+            <!-- User Management Section -->
+            <div class="section-card">
+                <h2 class="section-title">👥 User Management</h2>
+
+                <!-- Search and Filter -->
+                <div class="search-filter-grid">
+                    <div class="input-group">
+                        <label for="searchUser">Search Users:</label>
+                        <input type="text" id="searchUser" placeholder="Search by username..." onkeyup="filterUsers()">
+                    </div>
+                    <div class="input-group">
+                        <label for="dateFilter">Local Filter by Date:</label>
+                        <input type="date" id="dateFilter" onchange="filterUsers()">
+                        <small class="filter-note">Note: Use date filter above for system-wide filtering</small>
+                    </div>
+                    <div class="refresh-button-container">
+                        <button class="btn btn-primary" onclick="refreshCurrentView()">🔄 Refresh</button>
+                    </div>
+                </div>
+
+                <!-- Bulk Actions -->
+                <div class="bulk-actions">
+                    <h3>Bulk Actions:</h3>
+                    <button class="btn btn-warning" onclick="selectAllUsers()">Select All</button>
+                    <button class="btn btn-primary" onclick="deselectAllUsers()">Deselect All</button>
+                    <button class="btn btn-danger" onclick="deleteSelectedUsers()">🗑️ Delete Selected</button>
+                    <span id="selectedCount" class="selected-count">0 selected</span>
+                </div>
+
+                <!-- Users Table -->
+                <div class="table-container">
+                    <table class="user-table">
+                        <thead>
+                            <tr>
+                                <th class="col-checkbox"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th>
+                                <th class="col-username">Username</th>
+                                <th class="col-prize">Prize</th>
+                                <th class="col-date">Date</th>
+                                <th class="col-device">Device</th>
+                                <th class="col-ip">IP Address</th>
+                                <th class="col-os">OS</th>
+                                <th class="col-actions">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                            <tr>
+                                <td colspan="8" class="loading-message">Loading users...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Database Management Section -->
+            <div class="section-card">
+                <h2 class="section-title">🗄️ Database Management</h2>
+
+                <!-- Prize Management -->
+                <div style="margin-bottom: 25px;">
+                    <h3 style="color: #FFD700; margin-bottom: 10px;">🎁 Prize Management:</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div>
+                            <label style="color: #00FFFF; margin-bottom: 10px; display: block;">English Prizes:</label>
+                            <div id="englishPrizes">
+                                <!-- English prizes will be loaded here -->
+                            </div>
+                            <button class="btn btn-success" onclick="addPrize('en')" style="margin-top: 10px;">+ Add
+                                Prize</button>
+                        </div>
+                        <div>
+                            <label style="color: #00FFFF; margin-bottom: 10px; display: block;">Myanmar Prizes:</label>
+                            <div id="myanmarPrizes">
+                                <!-- Myanmar prizes will be loaded here -->
+                            </div>
+                            <button class="btn btn-success" onclick="addPrize('mm')" style="margin-top: 10px;">+ Add
+                                Prize</button>
+                        </div>
+                    </div>
+                    <div style="text-align: center; margin-top: 15px;">
+                        <button class="btn btn-primary" onclick="savePrizes()">💾 Save Prizes</button>
+                        <button class="btn btn-warning" onclick="loadPrizes()">🔄 Reload Prizes</button>
+                    </div>
+                </div>
+
+                <!-- Probability Management -->
+                <div style="margin-bottom: 25px;">
+                    <h3 style="color: #FFD700; margin-bottom: 10px;">📊 Prize Probabilities:</h3>
+                    <p style="color: #ccc; margin-bottom: 15px; font-size: 14px;">
+                        Set the probability for each prize (higher numbers = more likely to win).
+                        The system will automatically normalize these values.
+                    </p>
+                    <div id="probabilityInputs">
+                        <!-- Probability inputs will be loaded here -->
+                    </div>
+                    <div style="text-align: center; margin-top: 15px;">
+                        <button class="btn btn-primary" onclick="saveProbabilities()">💾 Save Probabilities</button>
+                        <button class="btn btn-warning" onclick="loadProbabilities()">🔄 Reload Probabilities</button>
+                        <button class="btn btn-success" onclick="resetToDefault()">🎯 Reset to Default</button>
+                    </div>
+                </div>
+
+                <!-- Total Spins Counter Management -->
+                <div style="margin-bottom: 25px;">
+                    <h3 style="color: #FFD700; margin-bottom: 10px;">🔢 Total Spins Counter Management:</h3>
+                    <p style="color: #ccc; margin-bottom: 15px; font-size: 14px;">
+                        Adjust the total spins counter displayed on the main page. The counter combines a base number
+                        with actual database spins.
+                    </p>
+
+                    <!-- Current Counter Status -->
+                    <div
+                        style="background: rgba(0,255,255,0.1); padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid rgba(0,255,255,0.3);">
+                        <div
+                            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; text-align: center;">
+                            <div>
+                                <div style="color: #00FFFF; font-size: 1.5rem; font-weight: bold;" id="displayedTotal">-
+                                </div>
+                                <div style="color: #ccc; font-size: 12px;">Displayed Total</div>
+                            </div>
+                            <div>
+                                <div style="color: #FFD700; font-size: 1.5rem; font-weight: bold;" id="baseCounter">-
+                                </div>
+                                <div style="color: #ccc; font-size: 12px;">Base Counter</div>
+                            </div>
+                            <div>
+                                <div style="color: #00FF66; font-size: 1.5rem; font-weight: bold;" id="dbSpins">-</div>
+                                <div style="color: #ccc; font-size: 12px;">Database Spins</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Counter Adjustment Controls -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                        <div
+                            style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border: 1px solid rgba(0,255,255,0.2);">
+                            <h4 style="color: #00FFFF; margin-bottom: 10px;">Set Total Counter:</h4>
+                            <div class="input-group">
+                                <input type="number" id="totalCounterInput" placeholder="Enter desired total" min="0"
+                                    style="margin-bottom: 10px;">
+                                <button class="btn btn-primary" onclick="setTotalCounter()">🎯 Set Total</button>
+                            </div>
+                            <p style="color: #ccc; font-size: 12px; margin-top: 5px;">
+                                This will adjust the base counter to achieve your desired total.
+                            </p>
+                        </div>
+                        <div
+                            style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,215,0,0.2);">
+                            <h4 style="color: #FFD700; margin-bottom: 10px;">Set Base Counter:</h4>
+                            <div class="input-group">
+                                <input type="number" id="baseCounterInput" placeholder="Enter base counter" min="0"
+                                    style="margin-bottom: 10px;">
+                                <button class="btn btn-warning" onclick="setBaseCounter()">⚙️ Set Base</button>
+                            </div>
+                            <p style="color: #ccc; font-size: 12px; margin-top: 5px;">
+                                Directly set the base counter value.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div style="text-align: center;">
+                        <button class="btn btn-success" onclick="loadTotalSpinsCounter()">🔄 Refresh Counter</button>
+                        <button class="btn btn-danger" onclick="resetBaseCounter()">🔄 Reset to Default (1958)</button>
+                    </div>
+                </div>
+
+                <!-- Winner Board Display Mode -->
+                <div style="margin-bottom: 25px;">
+                    <h3 style="color: #FFD700; margin-bottom: 10px;">🏆 Winner Board Display Mode:</h3>
+                    <p style="color: #ccc; margin-bottom: 15px; font-size: 14px;">
+                        Control what users see on the winner board in the main application.
+                    </p>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div
+                            style="background: rgba(0,255,102,0.1); padding: 15px; border-radius: 8px; border: 1px solid rgba(0,255,102,0.3);">
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <input type="radio" name="displayMode" value="real" id="displayModeReal"
+                                    onchange="updateDisplayMode()">
+                                <div>
+                                    <strong style="color: #00FF66;">Real Users Mode</strong>
+                                    <div style="color: #ccc; font-size: 12px; margin-top: 5px;">
+                                        Show actual users with masked usernames (first 3 chars + ****)
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                        <div
+                            style="background: rgba(255,215,0,0.1); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,215,0,0.3);">
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <input type="radio" name="displayMode" value="demo" id="displayModeDemo"
+                                    onchange="updateDisplayMode()">
+                                <div>
+                                    <strong style="color: #FFD700;">Demo Mode</strong>
+                                    <div style="color: #ccc; font-size: 12px; margin-top: 5px;">
+                                        Show fake demo users with predetermined names
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    <div id="displayModeStatus" style="text-align: center; color: #00FFFF; font-weight: bold;"></div>
+                </div>
+
+                <!-- Date Fix Utility -->
+                <div style="margin-bottom: 25px;">
+                    <h3 style="color: #FFD700; margin-bottom: 10px;">📅 Date Fix Utility:</h3>
+                    <p style="color: #ccc; margin-bottom: 15px; font-size: 14px;">
+                        Fix any dates that are incorrectly showing as 2025 (should be 2024).
+                    </p>
+                    <div style="text-align: center;">
+                        <button class="btn btn-warning" onclick="fixDates()">🔧 Fix Wrong Dates (2025 → 2024)</button>
+                    </div>
+                </div>
+
+                <!-- Reset All Database -->
+                <div
+                    style="background: rgba(255, 68, 68, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #FF4444;">
+                    <h3 style="color: #FF4444; margin-bottom: 15px;">⚠️ DANGER ZONE</h3>
+                    <p style="color: #ccc; margin-bottom: 15px;">This action will permanently delete ALL user data and
+                        cannot be undone!</p>
+                    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                        <input type="checkbox" id="confirmReset">
+                        <label for="confirmReset" style="color: #FF4444;">I understand this will delete ALL data
+                            permanently</label>
+                    </div>
+                    <button class="btn btn-danger" onclick="resetAllDatabase()" id="resetAllBtn" disabled>💥 RESET ALL
+                        DATABASE</button>
+                </div>
+            </div>
+
+            <!-- Export/Import Section -->
+            <div class="section-card">
+                <h2 class="section-title">📤 Data Export/Import</h2>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <h3 style="color: #00FF66; margin-bottom: 10px;">Export Data:</h3>
+                        <button class="btn btn-success" onclick="exportData('json')">📄 Export as JSON</button>
+                        <button class="btn btn-success" onclick="exportData('csv')">📊 Export as CSV</button>
+                        <button class="btn btn-success" onclick="exportToExcel()">📈 Export to Excel</button>
+                    </div>
+                    <div>
+                        <h3 style="color: #FFD700; margin-bottom: 10px;">Import Data:</h3>
+                        <input type="file" id="importFile" accept=".json,.csv" style="margin-bottom: 10px;">
+                        <button class="btn btn-warning" onclick="importData()">📥 Import Data</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Logout -->
+            <div style="text-align: center; margin-top: 30px;">
+                <button class="btn btn-danger" onclick="adminLogout()">🚪 Logout</button>
+            </div>
+        </div>
+
+        <!-- Messages -->
+        <div id="messageContainer"></div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+
+</html>
