@@ -29,11 +29,8 @@ A modern, bilingual (English/Myanmar) lucky draw application with comprehensive 
 ├── luckyspin.js        # Main application logic
 ├── admin.html          # Admin panel interface
 ├── admin.js            # Admin panel logic
-├── server/
-│   ├── index.js        # Express server with API routes
-│   ├── package.json    # Server dependencies
-│   └── .env           # Environment variables
-└── README.md          # This file
+├── admin.css           # Admin panel styling
+└── README.md           # This file
 ```
 
 ## Setup Instructions

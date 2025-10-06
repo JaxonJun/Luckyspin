@@ -17,7 +17,7 @@ const ADMIN_CREDENTIALS = {
 
 // Utility functions
 const Utils = {
-    showMessage: function(message, type, container = null) {
+    showMessage: function (message, type, container = null) {
         const messageDiv = container || document.createElement('div');
         if (!container) {
             messageDiv.className = `message ${type}`;
@@ -30,14 +30,64 @@ const Utils = {
         }
     },
 
-    formatDate: function(dateString) {
+    formatDate: function (dateString) {
         return new Date(dateString).toLocaleDateString();
+    },
+
+    async checkBackendHealth() {
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/spins`, {
+                method: 'GET',
+                timeout: 10000 // 10 second timeout
+            });
+            
+            if (response.ok) {
+                this.showMessage('✅ Backend is healthy and responding', 'success');
+                return true;
+            } else if (response.status === 404) {
+                this.showMessage('⚠️ Backend is awake but some endpoints missing', 'warning');
+                return false;
+            } else {
+                this.showMessage(`❌ Backend error: ${response.status}`, 'error');
+                return false;
+            }
+        } catch (error) {
+            this.showMessage('❌ Backend is sleeping or unavailable.', 'error');
+            return false;
+        }
+    },
+
+    async wakeBackend() {
+        this.showMessage('🔄 Attempting to wake backend... Please wait 30-60 seconds...', 'info');
+        
+        // Try multiple requests to wake up the backend
+        const attempts = 3;
+        for (let i = 0; i < attempts; i++) {
+            try {
+                await fetch(`${BACKEND_URL}/api/spins`);
+                await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds between attempts
+            } catch (error) {
+                // Expected while backend is waking up
+            }
+        }
+        
+        // Check if it's awake now
+        const isAwake = await this.checkBackendHealth();
+        if (isAwake) {
+            this.showMessage('✅ Backend is now awake! Refreshing data...', 'success');
+            // Reload the admin panel data
+            if (typeof Stats !== 'undefined') Stats.load();
+            if (typeof Users !== 'undefined') Users.load();
+            if (typeof Prizes !== 'undefined') Prizes.load();
+        } else {
+            this.showMessage('❌ Backend is still not responding.', 'error');
+        }
     }
 };
 
 // Authentication module
 const Auth = {
-    login: function() {
+    login: function () {
         const username = document.getElementById('adminUsername').value.trim();
         const password = document.getElementById('adminPassword').value;
         const messageDiv = document.getElementById('loginMessage');
@@ -58,7 +108,7 @@ const Auth = {
         }
     },
 
-    logout: function() {
+    logout: function () {
         sessionStorage.removeItem('adminLoggedIn');
         document.getElementById('loginSection').style.display = 'block';
         document.getElementById('adminPanel').style.display = 'none';
@@ -67,15 +117,28 @@ const Auth = {
         Utils.showMessage('Logged out successfully!', 'info');
     },
 
-    showAdminPanel: function() {
+    showAdminPanel: function () {
         document.getElementById('loginSection').style.display = 'none';
         document.getElementById('adminPanel').style.display = 'block';
-        Prizes.load();
-        Probabilities.load();
-        Counter.load();
+        
+        // Load modules with fallbacks
+        Prizes.load().catch(() => {
+            console.log('Backend unavailable, loading default prizes');
+            Prizes.setDefaults();
+        });
+        
+        Probabilities.load().catch(() => {
+            console.log('Backend unavailable, loading default probabilities');
+            Probabilities.setDefaults();
+        });
+        
+        Counter.load().catch(() => {
+            console.log('Backend unavailable, loading default counter');
+            Counter.setDefaults();
+        });
     },
 
-    isLoggedIn: function() {
+    isLoggedIn: function () {
         return sessionStorage.getItem('adminLoggedIn') === 'true';
     }
 };
@@ -86,12 +149,12 @@ const Stats = {
         try {
             let url = `${BACKEND_URL}/api/admin/stats${params}`;
             const response = await fetch(url);
-            
+
             if (!response.ok) {
                 // Fallback to calculate from spins data
                 return this.loadFromSpins(params);
             }
-            
+
             const data = await response.json();
             if (data.success) {
                 this.updateDisplay(data.stats);
@@ -113,7 +176,7 @@ const Stats = {
             const spins = await response.json();
             const stats = this.calculateStats(spins, params);
             this.updateDisplay(stats);
-            
+
             if (!params) {
                 Utils.showMessage('Statistics calculated from spins data', 'info');
             }
@@ -161,7 +224,7 @@ const Stats = {
         document.getElementById('totalSpins').textContent = stats.totalSpins || 0;
         document.getElementById('totalPrizes').textContent = (stats.totalPrizes || 0).toLocaleString();
         document.getElementById('todaySpins').textContent = stats.todaySpins || 0;
-        
+
         const dateLabel = stats.dateLabel || 'All Time';
         this.updateDateLabel(dateLabel);
     },
@@ -179,12 +242,12 @@ const Stats = {
             Utils.showMessage('Please select a date to filter', 'error');
             return;
         }
-        
+
         document.getElementById('dateFilter').value = dateFilter;
         const params = `?dateFilter=${dateFilter}`;
         await this.load(params);
         await Users.load(dateFilter);
-        
+
         const formattedDate = new Date(dateFilter).toLocaleDateString();
         Utils.showMessage(`Filtered data for ${formattedDate}`, 'success');
     },
@@ -193,27 +256,27 @@ const Stats = {
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('statsDateFilter').value = today;
         document.getElementById('dateFilter').value = today;
-        
+
         const params = `?dateFilter=${today}`;
         await this.load(params);
         await Users.load(today);
-        
+
         Utils.showMessage('Showing today\'s data', 'success');
     },
 
     async loadAllTimeStats() {
         document.getElementById('statsDateFilter').value = '';
         document.getElementById('dateFilter').value = '';
-        
+
         await this.load();
         await Users.load();
-        
+
         Utils.showMessage('Showing all time data', 'success');
     },
 
     async refreshCurrentView() {
         const statsDateFilter = document.getElementById('statsDateFilter').value;
-        
+
         if (statsDateFilter) {
             const params = `?dateFilter=${statsDateFilter}`;
             await this.load(params);
@@ -222,7 +285,7 @@ const Stats = {
             await this.load();
             await Users.load();
         }
-        
+
         Utils.showMessage('Data refreshed', 'success');
     }
 };
@@ -235,22 +298,63 @@ const Users = {
             if (dateFilter) {
                 url += `?dateFilter=${dateFilter}`;
             }
-            
+
             const response = await fetch(url);
             const users = await response.json();
-            
+
             AdminState.currentUsers = users;
             this.display(users);
             this.updateSelectedCount();
         } catch (error) {
-            console.error('Error loading users:', error);
-            Utils.showMessage('Error loading users', 'error');
+            console.error('Backend unavailable, loading demo users:', error);
+            this.loadDemoUsers();
+            Utils.showMessage('Backend unavailable - showing demo users for testing', 'warning');
         }
+    },
+
+    loadDemoUsers() {
+        // Demo users for testing when backend is down
+        AdminState.currentUsers = [
+            {
+                username: 'chang17891',
+                prize: '1,000 MMK',
+                date: new Date().toISOString(),
+                device: 'Mobile',
+                ipAddress: '192.168.1.100',
+                os: 'Android'
+            },
+            {
+                username: 'chang17871',
+                prize: '2,000 MMK',
+                date: new Date().toISOString(),
+                device: 'Desktop',
+                ipAddress: '192.168.1.101',
+                os: 'Windows'
+            },
+            {
+                username: '3000',
+                prize: '3,000 MMK',
+                date: new Date().toISOString(),
+                device: 'Mobile',
+                ipAddress: '192.168.1.102',
+                os: 'iOS'
+            },
+            {
+                username: '1000',
+                prize: '3,000 MMK',
+                date: new Date().toISOString(),
+                device: 'Desktop',
+                ipAddress: '192.168.1.103',
+                os: 'macOS'
+            }
+        ];
+        this.display(AdminState.currentUsers);
+        this.updateSelectedCount();
     },
 
     display(users) {
         const tbody = document.getElementById('usersTableBody');
-        
+
         if (!users.length) {
             tbody.innerHTML = '<tr><td colspan="8" class="loading-message">No users found</td></tr>';
             return;
@@ -279,22 +383,22 @@ const Users = {
     filter() {
         const searchTerm = document.getElementById('searchUser').value.toLowerCase();
         const dateFilter = document.getElementById('dateFilter').value;
-        
+
         let filtered = AdminState.currentUsers;
-        
+
         if (searchTerm) {
-            filtered = filtered.filter(user => 
+            filtered = filtered.filter(user =>
                 user.username.toLowerCase().includes(searchTerm)
             );
         }
-        
+
         if (dateFilter) {
             filtered = filtered.filter(user => {
                 const userDate = new Date(user.date).toISOString().split('T')[0];
                 return userDate === dateFilter;
             });
         }
-        
+
         this.display(filtered);
     },
 
@@ -310,7 +414,7 @@ const Users = {
     toggleSelectAll() {
         const selectAllCheckbox = document.getElementById('selectAllCheckbox');
         const userCheckboxes = document.querySelectorAll('.user-checkbox');
-        
+
         if (selectAllCheckbox.checked) {
             userCheckboxes.forEach(checkbox => {
                 checkbox.checked = true;
@@ -353,16 +457,16 @@ const Users = {
         if (!confirm(`Are you sure you want to delete user "${username}"?`)) {
             return;
         }
-        
+
         try {
             const response = await fetch(`${BACKEND_URL}/api/admin/delete-user`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username })
             });
-            
+
             const data = await response.json();
-            
+
             if (data.success) {
                 Utils.showMessage(`User "${username}" deleted successfully`, 'success');
                 this.load();
@@ -371,8 +475,11 @@ const Users = {
                 Utils.showMessage(data.error || 'Failed to delete user', 'error');
             }
         } catch (error) {
-            console.error('Error deleting user:', error);
-            Utils.showMessage('Error deleting user', 'error');
+            console.error('Backend unavailable, using local deletion:', error);
+            // Fallback: Remove from local state when backend is down
+            AdminState.currentUsers = AdminState.currentUsers.filter(user => user.username !== username);
+            this.display(AdminState.currentUsers);
+            Utils.showMessage(`User "${username}" removed locally (backend unavailable)`, 'warning');
         }
     },
 
@@ -381,11 +488,11 @@ const Users = {
             Utils.showMessage('Please select users to delete', 'error');
             return;
         }
-        
+
         if (!confirm(`Are you sure you want to delete ${AdminState.selectedUsers.size} selected users?`)) {
             return;
         }
-        
+
         try {
             const usernames = Array.from(AdminState.selectedUsers);
             const response = await fetch(`${BACKEND_URL}/api/admin/batch-delete`, {
@@ -393,9 +500,9 @@ const Users = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ usernames })
             });
-            
+
             const data = await response.json();
-            
+
             if (data.success) {
                 Utils.showMessage(`Successfully deleted ${data.deletedCount} users`, 'success');
                 AdminState.selectedUsers.clear();
@@ -405,8 +512,14 @@ const Users = {
                 Utils.showMessage(data.error || 'Failed to delete users', 'error');
             }
         } catch (error) {
-            console.error('Error deleting selected users:', error);
-            Utils.showMessage('Error deleting users', 'error');
+            console.error('Backend unavailable, using local deletion:', error);
+            // Fallback: Remove from local state when backend is down
+            const usernames = Array.from(AdminState.selectedUsers);
+            AdminState.currentUsers = AdminState.currentUsers.filter(user => !usernames.includes(user.username));
+            AdminState.selectedUsers.clear();
+            this.display(AdminState.currentUsers);
+            this.updateSelectedCount();
+            Utils.showMessage(`${usernames.length} users removed locally (backend unavailable)`, 'warning');
         }
     }
 };
@@ -416,14 +529,14 @@ const Prizes = {
     async load() {
         try {
             const response = await fetch(`${BACKEND_URL}/api/admin/prizes`);
-            
+
             if (!response.ok) {
                 // Fallback to config endpoint
                 return this.loadFromConfig();
             }
-            
+
             const data = await response.json();
-            
+
             if (data.success) {
                 AdminState.currentPrizes = data.prizes;
                 this.display();
@@ -441,7 +554,7 @@ const Prizes = {
         try {
             const response = await fetch(`${BACKEND_URL}/api/config`);
             const data = await response.json();
-            
+
             if (data.success && data.config.prizes) {
                 AdminState.currentPrizes = data.config.prizes;
                 this.display();
@@ -461,7 +574,14 @@ const Prizes = {
             mm: ["၅၀၀ ကျပ်", "၁၀၀၀ ကျပ်", "၂၀၀၀ ကျပ်", "၃၀၀၀ ကျပ်", "၅၀၀၀ ကျပ်", "၁၀၀၀၀ ကျပ်", "၁၅၀၀၀ ကျပ်", "၃၀၀၀၀ ကျပ်", "၁၀၀၀၀၀ ကျပ်"]
         };
         this.display();
-        Utils.showMessage('Loaded default prizes', 'info');
+        Utils.showMessage('Loaded default prizes - You can now edit them!', 'info');
+    },
+
+    // Force load prizes for offline editing
+    forceLoad() {
+        this.setDefaults();
+        Probabilities.setDefaults();
+        Utils.showMessage('Prizes loaded for offline editing', 'success');
     },
 
     display() {
@@ -472,13 +592,13 @@ const Prizes = {
     displayInputs(lang, containerId) {
         const container = document.getElementById(containerId);
         const prizes = AdminState.currentPrizes[lang] || [];
-        
+
         container.innerHTML = prizes.map((prize, index) => `
             <div style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
                 <input type="text" value="${prize}" 
-                       onchange="Prizes.update('${lang}', ${index}, this.value)"
+                       onchange="updatePrize('${lang}', ${index}, this.value)"
                        style="flex: 1; padding: 8px; border-radius: 5px; border: 1px solid rgba(0,255,255,0.3); background: rgba(0,0,0,0.3); color: white;">
-                <button class="btn btn-danger" onclick="Prizes.remove('${lang}', ${index})" 
+                <button class="btn btn-danger" onclick="removePrize('${lang}', ${index})" 
                         style="padding: 8px 12px; font-size: 12px;">🗑️</button>
             </div>
         `).join('');
@@ -513,9 +633,9 @@ const Prizes = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ prizes: AdminState.currentPrizes })
             });
-            
+
             const data = await response.json();
-            
+
             if (data.success) {
                 Utils.showMessage('Prizes saved successfully!', 'success');
                 Probabilities.load();
@@ -534,13 +654,13 @@ const Probabilities = {
     async load() {
         try {
             const response = await fetch(`${BACKEND_URL}/api/admin/probabilities`);
-            
+
             if (!response.ok) {
                 return this.loadFromConfig();
             }
-            
+
             const data = await response.json();
-            
+
             if (data.success) {
                 AdminState.currentProbabilities = data.probabilities;
                 this.display();
@@ -558,7 +678,7 @@ const Probabilities = {
         try {
             const response = await fetch(`${BACKEND_URL}/api/config`);
             const data = await response.json();
-            
+
             if (data.success && data.config.probabilities) {
                 AdminState.currentProbabilities = data.config.probabilities;
                 this.display();
@@ -581,16 +701,16 @@ const Probabilities = {
     display() {
         const container = document.getElementById('probabilityInputs');
         const prizeCount = Math.max(AdminState.currentPrizes.en?.length || 0, AdminState.currentPrizes.mm?.length || 0);
-        
+
         if (prizeCount === 0) {
             container.innerHTML = '<p style="color: #ccc;">Please set up prizes first</p>';
             return;
         }
-        
+
         while (AdminState.currentProbabilities.length < prizeCount) {
             AdminState.currentProbabilities.push(1);
         }
-        
+
         container.innerHTML = `
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
                 ${AdminState.currentProbabilities.slice(0, prizeCount).map((prob, index) => `
@@ -602,7 +722,7 @@ const Probabilities = {
                             ${AdminState.currentPrizes.en?.[index] || 'N/A'}
                         </div>
                         <input type="number" value="${prob}" min="0" step="0.001"
-                               onchange="Probabilities.update(${index}, this.value)"
+                               onchange="updateProbability(${index}, this.value)"
                                style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid rgba(0,255,255,0.3); background: rgba(0,0,0,0.3); color: white;">
                         <div style="color: #ccc; font-size: 11px; margin-top: 5px;">
                             Current: ${((prob / AdminState.currentProbabilities.reduce((a, b) => a + b, 0)) * 100).toFixed(2)}%
@@ -625,9 +745,9 @@ const Probabilities = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ probabilities: AdminState.currentProbabilities })
             });
-            
+
             const data = await response.json();
-            
+
             if (data.success) {
                 Utils.showMessage('Probabilities saved successfully!', 'success');
             } else {
@@ -641,15 +761,15 @@ const Probabilities = {
 
     resetToDefault() {
         if (!confirm('Reset probabilities to default values?')) return;
-        
+
         const prizeCount = Math.max(AdminState.currentPrizes.en?.length || 0, AdminState.currentPrizes.mm?.length || 0);
         const defaultProbs = [30, 20, 40, 30, 1, 0.1, 0.01, 0.001, 0.0001];
         AdminState.currentProbabilities = defaultProbs.slice(0, prizeCount);
-        
+
         while (AdminState.currentProbabilities.length < prizeCount) {
             AdminState.currentProbabilities.push(1);
         }
-        
+
         this.display();
         Utils.showMessage('Probabilities reset to default', 'info');
     }
@@ -660,13 +780,13 @@ const Counter = {
     async load() {
         try {
             const response = await fetch(`${BACKEND_URL}/api/admin/counter`);
-            
+
             if (!response.ok) {
                 return this.loadFromTotalSpins();
             }
-            
+
             const data = await response.json();
-            
+
             if (data.success) {
                 this.updateDisplay(data.counter);
                 Utils.showMessage('Counter loaded successfully', 'success');
@@ -683,7 +803,7 @@ const Counter = {
         try {
             const response = await fetch(`${BACKEND_URL}/api/total-spins`);
             const data = await response.json();
-            
+
             if (data.success) {
                 const counter = {
                     displayedTotal: data.totalSpins || 1958,
@@ -715,7 +835,7 @@ const Counter = {
         const displayedTotal = document.getElementById('displayedTotal');
         const baseCounter = document.getElementById('baseCounter');
         const dbSpins = document.getElementById('dbSpins');
-        
+
         if (displayedTotal) displayedTotal.textContent = (counter.displayedTotal || 0).toLocaleString();
         if (baseCounter) baseCounter.textContent = (counter.baseCounter || 0).toLocaleString();
         if (dbSpins) dbSpins.textContent = (counter.dbSpins || 0).toLocaleString();
@@ -724,22 +844,22 @@ const Counter = {
     async setTotal() {
         const input = document.getElementById('totalCounterInput');
         if (!input) return;
-        
+
         const totalValue = parseInt(input.value);
         if (isNaN(totalValue) || totalValue < 0) {
             Utils.showMessage('Please enter a valid number', 'error');
             return;
         }
-        
+
         try {
             const response = await fetch(`${BACKEND_URL}/api/admin/counter/set-total`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ total: totalValue })
             });
-            
+
             const data = await response.json();
-            
+
             if (data.success) {
                 this.updateDisplay(data.counter);
                 Utils.showMessage('Total counter updated successfully', 'success');
@@ -756,22 +876,22 @@ const Counter = {
     async setBase() {
         const input = document.getElementById('baseCounterInput');
         if (!input) return;
-        
+
         const baseValue = parseInt(input.value);
         if (isNaN(baseValue) || baseValue < 0) {
             Utils.showMessage('Please enter a valid number', 'error');
             return;
         }
-        
+
         try {
             const response = await fetch(`${BACKEND_URL}/api/admin/counter/set-base`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ base: baseValue })
             });
-            
+
             const data = await response.json();
-            
+
             if (data.success) {
                 this.updateDisplay(data.counter);
                 Utils.showMessage('Base counter updated successfully', 'success');
@@ -787,15 +907,15 @@ const Counter = {
 
     async reset() {
         if (!confirm('Reset base counter to default (1958)?')) return;
-        
+
         try {
             const response = await fetch(`${BACKEND_URL}/api/admin/counter/reset`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
-            
+
             const data = await response.json();
-            
+
             if (data.success) {
                 this.updateDisplay(data.counter);
                 Utils.showMessage('Base counter reset to default', 'success');
@@ -812,26 +932,26 @@ const Counter = {
 // Database management functions
 async function resetAllDatabase() {
     const confirmCheckbox = document.getElementById('confirmReset');
-    
+
     if (!confirmCheckbox.checked) {
         Utils.showMessage('Please confirm that you understand this action', 'error');
         return;
     }
-    
+
     const finalConfirm = prompt('Type "DELETE ALL" to confirm this action:');
     if (finalConfirm !== 'DELETE ALL') {
         Utils.showMessage('Action cancelled', 'info');
         return;
     }
-    
+
     try {
         const response = await fetch(`${BACKEND_URL}/api/admin/reset-all`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
         });
-        
+
         const data = await response.json();
-        
+
         if (data.success) {
             Utils.showMessage('All database records deleted successfully', 'success');
             confirmCheckbox.checked = false;
@@ -852,17 +972,17 @@ async function resetAllDatabase() {
 async function exportData(format) {
     try {
         const response = await fetch(`${BACKEND_URL}/api/admin/export?format=${format}`);
-        
+
         if (!response.ok) {
             // Fallback to manual export
             return exportDataManual(format);
         }
-        
+
         const data = await response.json();
-        
+
         if (data.success) {
-            const blob = new Blob([data.data], { 
-                type: format === 'json' ? 'application/json' : 'text/csv' 
+            const blob = new Blob([data.data], {
+                type: format === 'json' ? 'application/json' : 'text/csv'
             });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -872,7 +992,7 @@ async function exportData(format) {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            
+
             Utils.showMessage(`Data exported as ${format.toUpperCase()}`, 'success');
         } else {
             exportDataManual(format);
@@ -887,11 +1007,11 @@ async function exportDataManual(format) {
     try {
         const response = await fetch(`${BACKEND_URL}/api/spins`);
         const spins = await response.json();
-        
+
         let exportData;
         let mimeType;
         let fileExtension;
-        
+
         if (format === 'json') {
             exportData = JSON.stringify(spins, null, 2);
             mimeType = 'application/json';
@@ -899,7 +1019,7 @@ async function exportDataManual(format) {
         } else {
             const headers = ['Username', 'Prize', 'Date', 'Device', 'IP Address', 'OS'];
             const csvRows = [headers.join(',')];
-            
+
             spins.forEach(spin => {
                 const row = [
                     `"${spin.username || ''}"`,
@@ -911,12 +1031,12 @@ async function exportDataManual(format) {
                 ];
                 csvRows.push(row.join(','));
             });
-            
+
             exportData = csvRows.join('\n');
             mimeType = 'text/csv';
             fileExtension = 'csv';
         }
-        
+
         const blob = new Blob([exportData], { type: mimeType });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -926,7 +1046,7 @@ async function exportDataManual(format) {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        
+
         Utils.showMessage(`Data exported as ${format.toUpperCase()} (${spins.length} records)`, 'success');
     } catch (error) {
         console.error('Error exporting data manually:', error);
@@ -938,23 +1058,23 @@ async function exportDataManual(format) {
 async function importData() {
     const fileInput = document.getElementById('importFile');
     const file = fileInput.files[0];
-    
+
     if (!file) {
         Utils.showMessage('Please select a file to import', 'error');
         return;
     }
-    
+
     const formData = new FormData();
     formData.append('file', file);
-    
+
     try {
         const response = await fetch(`${BACKEND_URL}/api/admin/import`, {
             method: 'POST',
             body: formData
         });
-        
+
         const data = await response.json();
-        
+
         if (data.success) {
             Utils.showMessage(`Successfully imported ${data.importedCount} records`, 'success');
             fileInput.value = '';
@@ -980,24 +1100,24 @@ document.addEventListener('DOMContentLoaded', () => {
     // Setup event listeners
     const confirmReset = document.getElementById('confirmReset');
     if (confirmReset) {
-        confirmReset.addEventListener('change', function() {
+        confirmReset.addEventListener('change', function () {
             document.getElementById('resetAllBtn').disabled = !this.checked;
         });
     }
 
     const adminPassword = document.getElementById('adminPassword');
     if (adminPassword) {
-        adminPassword.addEventListener('keypress', function(e) {
+        adminPassword.addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
                 Auth.login();
             }
         });
     }
-    
+
     setTimeout(() => {
         const statsDateFilter = document.getElementById('statsDateFilter');
         if (statsDateFilter) {
-            statsDateFilter.addEventListener('keypress', function(e) {
+            statsDateFilter.addEventListener('keypress', function (e) {
                 if (e.key === 'Enter') {
                     Stats.filterByDate();
                 }
@@ -1039,3 +1159,171 @@ function loadTotalSpinsCounter() { return Counter.load(); }
 function updatePrize(lang, index, value) { Prizes.update(lang, index, value); }
 function removePrize(lang, index) { Prizes.remove(lang, index); }
 function updateProbability(index, value) { Probabilities.update(index, value); }
+function fixDates() { return Database.fixDates(); }
+function updateDisplayMode() { return DisplayMode.update(); }
+function exportToExcel() { return DataManager.exportToExcel(); }
+function forceLoadPrizes() { Prizes.forceLoad(); }
+function loadDemoUsers() { Users.loadDemoUsers(); }
+function checkBackend() { return Utils.checkBackendHealth(); }
+function wakeBackend() { return Utils.wakeBackend(); }
+
+// Display Mode module
+const DisplayMode = {
+    async load() {
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/admin/display-mode`);
+            const data = await response.json();
+
+            if (data.success) {
+                const mode = data.mode || 'demo';
+                const radioButton = document.getElementById(`displayMode${mode.charAt(0).toUpperCase() + mode.slice(1)}`);
+                if (radioButton) radioButton.checked = true;
+                this.updateStatus(mode);
+            } else {
+                const demoButton = document.getElementById('displayModeDemo');
+                if (demoButton) demoButton.checked = true;
+                this.updateStatus('demo');
+            }
+        } catch (error) {
+            console.error('Error loading display mode:', error);
+            const demoButton = document.getElementById('displayModeDemo');
+            if (demoButton) demoButton.checked = true;
+            this.updateStatus('demo');
+        }
+    },
+
+    async update() {
+        const mode = document.querySelector('input[name="displayMode"]:checked')?.value || 'demo';
+
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/admin/display-mode`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                this.updateStatus(mode);
+                Utils.showMessage(`Display mode updated to ${mode}`, 'success');
+            } else {
+                Utils.showMessage(data.error || 'Failed to update display mode', 'error');
+            }
+        } catch (error) {
+            console.error('Error updating display mode:', error);
+            Utils.showMessage('Error updating display mode', 'error');
+        }
+    },
+
+    updateStatus(mode) {
+        const statusElement = document.getElementById('displayModeStatus');
+        if (statusElement) {
+            statusElement.textContent = `Current Mode: ${mode.charAt(0).toUpperCase() + mode.slice(1)}`;
+        }
+    }
+};
+
+// Database module
+const Database = {
+    async fixDates() {
+        if (!confirm('Fix dates that are incorrectly showing as 2025?')) return;
+
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/admin/fix-dates`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                Utils.showMessage(`Fixed ${data.fixedCount} date records`, 'success');
+                Users.load();
+                Stats.load();
+            } else {
+                Utils.showMessage(data.error || 'Failed to fix dates', 'error');
+            }
+        } catch (error) {
+            console.error('Error fixing dates:', error);
+            Utils.showMessage('Error fixing dates', 'error');
+        }
+    }
+};
+
+// Data Manager module
+const DataManager = {
+    async exportToExcel() {
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/admin/export-excel`);
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `luckyspin-data-${new Date().toISOString().split('T')[0]}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                Utils.showMessage('Data exported to Excel', 'success');
+            } else {
+                Utils.showMessage('Failed to export to Excel', 'error');
+            }
+        } catch (error) {
+            console.error('Error exporting to Excel:', error);
+            Utils.showMessage('Error exporting to Excel', 'error');
+        }
+    }
+};
+
+// Initialize admin panel
+document.addEventListener('DOMContentLoaded', async function() {
+    // Check backend health first
+    const backendHealthy = await Utils.checkBackendHealth();
+    const statusDiv = document.getElementById('backendStatus');
+    
+    if (!backendHealthy && statusDiv) {
+        statusDiv.style.display = 'block';
+    }
+    
+    // Check if already logged in
+    if (Auth.isLoggedIn()) {
+        Auth.showAdminPanel();
+        if (backendHealthy) {
+            Stats.load();
+            Users.load();
+        } else {
+            // Load offline data
+            Stats.loadFromSpins([]);
+            Users.loadDemoUsers();
+            Prizes.setDefaults();
+        }
+    }
+    
+    // Enable/disable reset button based on checkbox
+    const confirmCheckbox = document.getElementById('confirmReset');
+    const resetButton = document.getElementById('resetAllBtn');
+    
+    if (confirmCheckbox && resetButton) {
+        confirmCheckbox.addEventListener('change', function() {
+            resetButton.disabled = !this.checked;
+        });
+    }
+    
+    // Handle Enter key in login form
+    const usernameInput = document.getElementById('adminUsername');
+    const passwordInput = document.getElementById('adminPassword');
+    
+    if (usernameInput && passwordInput) {
+        [usernameInput, passwordInput].forEach(input => {
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    Auth.login();
+                }
+            });
+        });
+    }
+});
